@@ -45,6 +45,17 @@ export async function isInfoPanelOpen(page: Page): Promise<boolean> {
   return (await readInfoPanelText(page)) !== null;
 }
 
+/**
+ * 패널의 날짜 문자열을 yyyymmdd 숫자로 바꾼다. 못 읽으면 null.
+ * "2019년 4월 27일" → 20190427. 올해 사진은 연도가 빠지므로("10월 1일") 올해로 본다.
+ */
+export function dateKey(date: string | null, now = new Date()): number | null {
+  const m = date?.match(/^(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (!m) return null;
+  const year = m[1] ? Number(m[1]) : now.getFullYear();
+  return year * 10000 + Number(m[2]) * 100 + Number(m[3]);
+}
+
 /** 패널 텍스트를 필드로 나눈다. 실제 화면을 보며 계속 다듬을 부분 */
 export function parseInfo(rawText: string): PhotoInfo {
   const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);

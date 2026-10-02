@@ -27,6 +27,7 @@ npm run chrome          # 전용 Chrome 실행 → 최초 1회 로그인 → 시
 npm run scan            # 열린 사진부터 → 방향으로 끝까지 순회
 npm run scan -- --limit 20 --delay 600   # 20장만, 대기 600ms(+지터)
 npm run scan -- --rescan                 # DB 에 있는 사진도 다시 읽기
+npm run scan -- --until 20261001         # 이 날짜(yyyymmdd)보다 과거 사진이 나오면 멈춤 (그 사진은 저장 안 함)
 npm run report          # 일치한 사진 → data/matches.csv
 npm run reset           # data/photos.db, data/matches.csv 삭제 (처음부터 다시)
 npm run typecheck
@@ -49,6 +50,8 @@ npm run typecheck
 ## 확인된 사실 (2026-10-02 실측)
 
 - "세부정보" 기준 추출은 실제 DOM 에서 동작한다. 날짜 / 시간 / `GMT+09:00` 이 각각 별도 줄로 나온다.
+- 날짜 줄은 "2019년 4월 27일", 올해 사진은 연도 없이 "10월 1일" → `dateKey()` 가 올해로 보정.
+  → 방향은 최신 → 과거 순이라 `--until` 은 처음 만나는 과거 사진에서 멈추면 된다.
 - 시작 사진 `AF1QipOLqHSbmnuo5aUr4c5xu86wHxkdWUvMLVspKBGx` 부터 6장 중
   `20190427_171007-PANO.jpg`(파노라마, 5319×1675)가 문구 없음 → 일치. 이 사진은 "저장용량 절약" 화질 줄도 없었다.
 

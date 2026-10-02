@@ -2,7 +2,7 @@ import { chromium, type Page } from 'playwright-core';
 import { parseArgs } from 'node:util';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { openDb } from './db.ts';
-import { isInfoPanelOpen, parseInfo, photoIdFromUrl, readInfoPanelText } from './extract.ts';
+import { dateKey, isInfoPanelOpen, parseInfo, photoIdFromUrl, readInfoPanelText } from './extract.ts';
 import { isMatch } from './match.ts';
 
 const { values: opts } = parseArgs({
@@ -11,10 +11,22 @@ const { values: opts } = parseArgs({
     limit: { type: 'string', default: '0' }, // 0 = 끝까지
     delay: { type: 'string', default: '400' }, // 사진 사이 기본 대기(ms). 여기에 랜덤 지터가 더해진다
     rescan: { type: 'boolean', default: false }, // DB 에 있는 사진도 다시 읽는다
+    until: { type: 'string' }, // yyyymmdd. 이 날짜보다 과거 사진이 나오면 멈춘다
   },
 });
 const limit = Number(opts.limit);
 const delay = Number(opts.delay);
+if (opts.until !== undefined && !/^\d{8}$/.test(opts.until)) {
+  console.error(`--until 은 yyyymmdd 형식이어야 합니다 (예: 20261001). 받은 값: ${opts.until}`);
+  process.exit(1);
+}
+const until = opts.until ? Number(opts.until) : null;
+
+/** --until 보다 과거 사진이면 true. 날짜를 못 읽으면 멈추지 않는다 */
+function isBeforeUntil(date: string | null): boolean {
+  const key = dateKey(date);
+  return until !== null && key !== null && key < until;
+}
 
 async function findPhotoPage(port: string): Promise<Page> {
   const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
@@ -116,6 +128,10 @@ async function main() {
 
     const cached = opts.rescan ? undefined : store.get(id);
     if (cached) {
+      if (isBeforeUntil(cached.date)) {
+        console.log(`--until ${until} 보다 과거 사진(${cached.date})이 나와 멈춥니다.`);
+        break;
+      }
       // 이미 읽은 사진은 패널을 다시 읽지 않고 저장된 결과를 쓴다
       cachedCount++;
       if (cached.matched) {
@@ -129,6 +145,10 @@ async function main() {
         console.warn(`[skip] ${MAX_RETRIES}번 재시도해도 정보 패널을 읽지 못함 (다음 실행 때 다시 시도): ${url}`);
       } else {
         let info = parseInfo(raw);
+        if (isBeforeUntil(info.date)) {
+          console.log(`--until ${until} 보다 과거 사진(${info.date})이 나와 멈춥니다.`);
+          break;
+        }
         let matched = isMatch(info);
         if (matched) {
           // 패널 아래쪽 문구가 늦게 그려졌을 수 있으니 잠시 뒤 한 번 더 읽어 확인한다
